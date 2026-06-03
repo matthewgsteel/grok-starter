@@ -1,0 +1,38 @@
+﻿# Dependencies
+node_modules/
+vendor/
+
+# Build / dist
+dist/
+build/
+*.exe
+*.dll
+*.so
+
+# IDE / editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs / temp
+*.log
+*.tmp
+.env
+.env.*
+
+# Language specific
+__pycache__/
+*.pyc
+*.pyo
+target/          # Rust
+*.class          # Java
+bin/
+obj/             # .NET
+
+# Misc
+*.bak
