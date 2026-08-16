@@ -1,16 +1,17 @@
 import os
-import subprocess
 import socket
+import subprocess
 from typing import Optional
-from mcp.server.mcpserver import MCPServer
 
-mcp = MCPServer(
-    "MGS Laptop Controller",
-    instructions="Private Windows administration MCP for Matthew G. Steel's laptop. Use run_powershell for local Windows administration and for controlled recovery work on MAIN-GRETNA-PC through the laptop's existing network/admin access."
-)
+from mcp.server.mcpserver import MCPServer
+from mcp.server.transport_security import TransportSecuritySettings
+
+mcp = MCPServer("MGS Laptop Controller")
+
 
 @mcp.tool()
 def get_mcp_status() -> dict:
+    """Return basic status for the temporary laptop administration MCP."""
     return {
         "ok": True,
         "hostname": socket.gethostname(),
@@ -19,30 +20,58 @@ def get_mcp_status() -> dict:
         "pid": os.getpid(),
     }
 
+
 @mcp.tool()
-def run_powershell(script: str, workingDirectory: Optional[str] = None, timeoutSeconds: int = 120) -> dict:
-    """Execute PowerShell on the laptop for setup, diagnostics, file operations, services, processes, networking, and recovery administration."""
+def run_powershell(
+    script: str,
+    workingDirectory: Optional[str] = None,
+    timeoutSeconds: int = 120,
+) -> dict:
+    """Execute PowerShell locally on the laptop for Windows administration and recovery work."""
     timeoutSeconds = max(1, min(int(timeoutSeconds), 3600))
-    cwd = workingDirectory if workingDirectory else None
-    p = subprocess.run(
-        ["powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", script],
-        cwd=cwd,
+    proc = subprocess.run(
+        [
+            "powershell.exe",
+            "-NoProfile",
+            "-ExecutionPolicy",
+            "Bypass",
+            "-Command",
+            script,
+        ],
+        cwd=workingDirectory or None,
         capture_output=True,
         text=True,
         timeout=timeoutSeconds,
         errors="replace",
     )
     return {
-        "exitCode": p.returncode,
-        "stdout": p.stdout,
-        "stderr": p.stderr,
+        "exitCode": proc.returncode,
+        "stdout": proc.stdout,
+        "stderr": proc.stderr,
     }
 
+
 if __name__ == "__main__":
+    security = TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=[
+            "127.0.0.1:*",
+            "localhost:*",
+            "mcp.matthewgsteel.com",
+            "mcp.matthewgsteel.com:*",
+        ],
+        allowed_origins=[
+            "http://127.0.0.1:*",
+            "http://localhost:*",
+            "https://mcp.matthewgsteel.com",
+        ],
+    )
+
     mcp.run(
         transport="streamable-http",
         host="127.0.0.1",
         port=8765,
         stateless_http=True,
         json_response=True,
+        transport_security=security,
     )
