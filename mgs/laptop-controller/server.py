@@ -2,12 +2,10 @@ import os
 import subprocess
 import socket
 from typing import Optional
-from mcp.server.fastmcp import FastMCP
+from mcp.server.mcpserver import MCPServer
 
-mcp = FastMCP(
+mcp = MCPServer(
     "MGS Laptop Controller",
-    host="127.0.0.1",
-    port=8765,
     instructions="Private Windows administration MCP for Matthew G. Steel's laptop. Use run_powershell for local Windows administration and for controlled recovery work on MAIN-GRETNA-PC through the laptop's existing network/admin access."
 )
 
@@ -41,4 +39,10 @@ def run_powershell(script: str, workingDirectory: Optional[str] = None, timeoutS
     }
 
 if __name__ == "__main__":
-    mcp.run(transport="streamable-http")
+    mcp.run(
+        transport="streamable-http",
+        host="127.0.0.1",
+        port=8765,
+        stateless_http=True,
+        json_response=True,
+    )
