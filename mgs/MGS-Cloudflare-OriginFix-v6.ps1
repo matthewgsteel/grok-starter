@@ -7,7 +7,8 @@ $log = Join-Path $root ("MGS_cloudflare_originfix_v6_$stamp.log")
 
 function Log([string]$m) {
     $line = "[$(Get-Date -Format o)] $m"
-    $line | Tee-Object -FilePath $log -Append
+    Add-Content -LiteralPath $log -Value $line
+    Write-Host $line
 }
 
 function Http-Probe([string]$url,[string]$method='GET',[string]$body='') {
@@ -69,7 +70,6 @@ function Get-CloudflaredExe {
 
 Log 'MGS v6 recovery started. No reboot, no DISM/SFC, no Proton changes, no Windows cleanup.'
 
-# Proven local origin from v5 screenshot: 127.0.0.1:8765 answered HTTP 406.
 $localGet = Http-Probe 'http://127.0.0.1:8765/mcp' 'GET'
 $initBody = '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{},"clientInfo":{"name":"mgs-recovery-probe","version":"1.0"}}}'
 $localPost = Http-Probe 'http://127.0.0.1:8765/mcp' 'POST' $initBody
@@ -78,7 +78,6 @@ if ($localGet -eq 0 -and $localPost -eq 0) {
     throw 'Local MCP transport is not responding on 127.0.0.1:8765.'
 }
 
-# Recover tunnel UUID and credential without copying anything onto itself.
 $cfgCandidates = @(
     (Join-Path $root 'mgs-recovery-config.yml'),
     'C:\Windows\System32\config\systemprofile\.cloudflared\config.yml',
@@ -131,7 +130,6 @@ if ($LASTEXITCODE -ne 0) { throw 'Ingress validation failed.' }
 $rule = & $exe --config=$recoveryCfg tunnel ingress rule 'https://mcp.matthewgsteel.com/mcp' 2>&1
 Log ('Ingress rule match: ' + ($rule -join ' '))
 
-# Stop only MGS recovery connectors and the MGS tunnel service, not Dominican or unrelated tunnels.
 $procs = @(Get-CimInstance Win32_Process -Filter "Name='cloudflared.exe'" -ErrorAction SilentlyContinue)
 foreach ($p in $procs) {
     $cmd = [string]$p.CommandLine
@@ -158,23 +156,19 @@ if ($p.HasExited) {
 }
 Log ("Fresh MGS cloudflared connector running PID $($p.Id)")
 
-# Compare public MCP behavior against the proven local origin.
 $publicGet = Http-Probe 'https://mcp.matthewgsteel.com/mcp' 'GET'
 $publicPost = Http-Probe 'https://mcp.matthewgsteel.com/mcp' 'POST' $initBody
 Log ("Public MCP GET status=$publicGet POST initialize status=$publicPost")
 
-# Inspect public DNS route locally.
 try {
     $dns = Resolve-DnsName 'mcp.matthewgsteel.com' -Type CNAME -ErrorAction Stop | Select-Object -First 1
     if ($dns) { Log ('DNS CNAME target=' + $dns.NameHost) }
 } catch { Log ('DNS CNAME lookup failed: ' + $_.Exception.Message) }
 
-# If the raw public endpoint still reports 502/504, capture the exact cloudflared origin error.
 if (($publicGet -in 0,502,504) -and ($publicPost -in 0,502,504)) {
     Log 'Public endpoint still does not reach the origin. cloudflared stderr tail:'
     Get-Content $errLog -Tail 120 -ErrorAction SilentlyContinue | ForEach-Object { Log $_ }
 
-    # If cert.pem survived and CLI supports --overwrite-dns, normalize the CNAME to this tunnel.
     $cert = @(
         'C:\Windows\System32\config\systemprofile\.cloudflared\cert.pem',
         'C:\Windows.old\Windows\System32\config\systemprofile\.cloudflared\cert.pem',
