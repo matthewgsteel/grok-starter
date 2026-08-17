@@ -1,0 +1,40 @@
+name: MGS Temporary Skill Transfer
+on:
+  push:
+    paths:
+      - '.github/workflows/mgs-temp-skill-transfer.yml'
+      - 'mgs/_transfer_20260817/*.b64'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  decode:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Decode validated skill bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          src='mgs/_transfer_20260817/mgs-windows-host-operations.skill.zip.b64'
+          dst='mgs/_transfer_20260817/mgs-windows-host-operations.skill.zip'
+          base64 -d "$src" > "$dst"
+          bytes=$(wc -c < "$dst" | tr -d ' ')
+          sha=$(sha256sum "$dst" | awk '{print $1}')
+          echo "bytes=$bytes"
+          echo "sha256=$sha"
+          test "$bytes" = '6799'
+          test "$sha" = 'a53a6607826c9dff4b7aeec7c2ed59a32dfa0dc66942afdd578c0ea997c8f4e0'
+      - name: Commit temporary binary transfer
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'mgs-transfer-bot'
+          git config user.email 'mgsteel@protonmail.com'
+          git add mgs/_transfer_20260817/mgs-windows-host-operations.skill.zip
+          if git diff --cached --quiet; then
+            echo 'No transfer change needed.'
+            exit 0
+          fi
+          git commit -m 'Temporary binary transfer for MGS Host Operations skill'
+          git push
