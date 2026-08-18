@@ -1,0 +1,28 @@
+name: Temporary MGS Skill Transfer Unpack
+on:
+  push:
+    paths:
+      - '.github/workflows/mgs-temp-skill-unpack.yml'
+permissions:
+  contents: write
+jobs:
+  unpack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack temporary skill transfer
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf mgs/_transfer_20260817/extracted
+          mkdir -p mgs/_transfer_20260817/extracted
+          unzip -o mgs/_transfer_20260817/mgs-windows-host-operations.skill.zip -d mgs/_transfer_20260817/extracted
+          git config user.name 'mgs-transfer-bot'
+          git config user.email 'mgsteel@protonmail.com'
+          git add mgs/_transfer_20260817/extracted
+          if git diff --cached --quiet; then
+            echo 'No changes to commit'
+          else
+            git commit -m 'Temporary unpack of MGS Host Operations skill transfer'
+            git push
+          fi
