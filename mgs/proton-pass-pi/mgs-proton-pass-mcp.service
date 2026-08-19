@@ -1,0 +1,17 @@
+[Unit]
+Description=MGS Proton Pass MCP (Pi-native)
+After=network-online.target mgs-host-control.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mgs
+Group=mgs
+Environment=HOME=/home/mgs
+WorkingDirectory=/home/mgs/mcp-services/proton-pass-pi
+ExecStart=/home/mgs/mcp-services/proton-drive/node_modules/.bin/supergateway --stdio "/usr/bin/env node /home/mgs/mcp-services/proton-pass-pi/server.mjs" --outputTransport streamableHttp --stateful --sessionTimeout 600000 --port 8012 --streamableHttpPath /mcp
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
