@@ -1,0 +1,16 @@
+[Unit]
+Description=MGS Proton Pass MCP path rewrite proxy
+After=mgs-proton-pass-mcp.service
+Requires=mgs-proton-pass-mcp.service
+
+[Service]
+Type=simple
+User=mgs
+Group=mgs
+Environment=HOME=/home/mgs
+ExecStart=/usr/bin/node /home/mgs/mcp-services/proton-pass-pi/proxy.mjs
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
